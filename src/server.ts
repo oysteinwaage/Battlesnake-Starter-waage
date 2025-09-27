@@ -7,7 +7,7 @@ export function info(): InfoResponse {
     author: "Gøystein",
     color: "#F63866",
     head: "tiger-king",
-    tail: "coffee",
+    tail: "mouse",
   };
 }
 
@@ -54,10 +54,9 @@ export function move(gameState: GameState): MoveResponse {
   });
 
   // TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
-  // This would be a great next step! You can loop over `gameState.board.snakes`
-  // and apply the same logic as Step 2 for each opponent snake's body.
-  gameState.board.snakes.forEach((snake) => {
+  gameState.board.snakes.filter(slange => slange.id !== gameState.you.id).forEach((snake) => {
     // sjekk om potensiell krasj med hodet til andre slanger, kun hvis den andre slangen er like stor eller større enn oss
+
     if(gameState.you.length <= snake.length) {
       if (myHead.x === snake.head.x - 1 && myHead.y === snake.head.y) isMoveSafe.right = false;
       if (myHead.x === snake.head.x + 1 && myHead.y === snake.head.y) isMoveSafe.left = false;
@@ -94,7 +93,22 @@ export function move(gameState: GameState): MoveResponse {
   });
 
   let nextMove = safeMoves[Math.floor(Math.random() * safeMoves.length)];
-  if (closestFood !== undefined) {
+
+// marker mat som er farlig fordi en annen slange kan spise den før oss
+  const dangerousFood: Set<string> = new Set();
+  food.forEach((f) => {
+    gameState.board.snakes.forEach((snake) => {
+      if (snake.id !== gameState.you.id && snake.length >= gameState.you.length) {
+        const dist = Math.abs(snake.head.x - f.x) + Math.abs(snake.head.y - f.y);
+        if (dist === 1) {
+          dangerousFood.add(`${f.x},${f.y}`);
+        }
+      }
+    });
+  });
+
+// When choosing preferredMoves, skip dangerous food
+  if (closestFood !== undefined && !dangerousFood.has(`${closestFood.x},${closestFood.y}`)) {
     const preferredMoves: string[] = [];
     if (myHead.x < closestFood.x) preferredMoves.push("right");
     else if (myHead.x > closestFood.x) preferredMoves.push("left");
@@ -103,10 +117,7 @@ export function move(gameState: GameState): MoveResponse {
 
     const safePreferredMoves = preferredMoves.filter((move) => safeMoves.includes(move));
     if (safePreferredMoves.length > 0) {
-      nextMove =
-        safePreferredMoves[
-          Math.floor(Math.random() * safePreferredMoves.length)
-        ];
+      nextMove = safePreferredMoves[Math.floor(Math.random() * safePreferredMoves.length)];
     }
   }
 
