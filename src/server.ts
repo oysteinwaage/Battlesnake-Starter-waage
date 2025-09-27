@@ -44,9 +44,11 @@ export function move(gameState: GameState): MoveResponse {
   if (myHead.y === 0) isMoveSafe.down = false;
   if (myHead.y === boardHeight - 1) isMoveSafe.up = false;
 
+  // det mangler anit-hale kollisjon -> altså hvis alt annet er utrygt, gå mot en hale
+
   // Prevent colliding with yourself
   const myBody = gameState.you.body;
-  myBody.forEach((segment) => {
+  myBody.slice(0, -1).forEach((segment) => {
     if (myHead.x === segment.x - 1 && myHead.y === segment.y) isMoveSafe.right = false;
     if (myHead.x === segment.x + 1 && myHead.y === segment.y) isMoveSafe.left = false;
     if (myHead.y === segment.y - 1 && myHead.x === segment.x) isMoveSafe.up = false;
@@ -64,7 +66,7 @@ export function move(gameState: GameState): MoveResponse {
       if (myHead.y === snake.head.y + 1 && myHead.x === snake.head.x) isMoveSafe.down = false;
     }
     // hindrer krasj med kroppen til andre slanger
-    snake.body.forEach((otherSnake) => {
+    snake.body.slice(0, -1).forEach((otherSnake) => {
       if (myHead.x === otherSnake.x - 1 && myHead.y === otherSnake.y) isMoveSafe.right = false;
       if (myHead.x === otherSnake.x + 1 && myHead.y === otherSnake.y) isMoveSafe.left = false;
       if (myHead.y === otherSnake.y - 1 && myHead.x === otherSnake.x) isMoveSafe.up = false;
@@ -91,10 +93,42 @@ export function move(gameState: GameState): MoveResponse {
       closestFood = f;
     }
   });
+// TODO start på test
+  function hasSafeNextMove(newHead: Coord, gameState: GameState): boolean {
+    const directions = {
+      up: { x: newHead.x, y: newHead.y + 1 },
+      down: { x: newHead.x, y: newHead.y - 1 },
+      left: { x: newHead.x - 1, y: newHead.y },
+      right: { x: newHead.x + 1, y: newHead.y },
+    };
+    for (const dir in directions) {
+      const pos = directions[dir];
+      // Check out of bounds
+      if (pos.x < 0 || pos.x >= gameState.board.width || pos.y < 0 || pos.y >= gameState.board.height) continue;
+      // Check collision with any snake
+      const collision = gameState.board.snakes.some(snake =>
+          snake.body.some(segment => segment.x === pos.x && segment.y === pos.y)
+      );
+      if (!collision) return true;
+    }
+    return false;
+  }
 
-  let nextMove = safeMoves[Math.floor(Math.random() * safeMoves.length)];
+// In your move function, after calculating safeMoves:
+  const lookaheadMoves = safeMoves.filter(move => {
+    let newHead = { ...myHead };
+    if (move === "up") newHead.y += 1;
+    if (move === "down") newHead.y -= 1;
+    if (move === "left") newHead.x -= 1;
+    if (move === "right") newHead.x += 1;
+    return hasSafeNextMove(newHead, gameState);
+  });
 
-// marker mat som er farlig fordi en annen slange kan spise den før oss
+  const finalMoves = lookaheadMoves.length > 0 ? lookaheadMoves : safeMoves;
+  let nextMove = finalMoves[Math.floor(Math.random() * finalMoves.length)];
+  // let nextMove = safeMoves[Math.floor(Math.random() * safeMoves.length)];
+// TODO slutt på test
+// marker mat som er farlig fordi en annen slange kan spise den samtidig
   const dangerousFood: Set<string> = new Set();
   food.forEach((f) => {
     gameState.board.snakes.forEach((snake) => {
