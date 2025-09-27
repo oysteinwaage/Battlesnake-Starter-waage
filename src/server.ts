@@ -5,7 +5,7 @@ export function info(): InfoResponse {
   return {
     apiversion: "1",
     author: "Gøystein",
-    color: "#FFFFFF",
+    color: "#F63866",
     head: "tiger-king",
     tail: "coffee",
   };
